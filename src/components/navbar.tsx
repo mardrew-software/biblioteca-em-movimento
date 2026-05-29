@@ -2,9 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Shield, LogIn } from 'lucide-react';
 
 interface User {
   email: string;
@@ -16,36 +15,43 @@ export function Navbar() {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  const googleButtonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     checkAuth();
   }, []);
 
-  // Load Google Sign-In button when modal is shown
+  // Load Google Sign-In button when not logged in
   useEffect(() => {
-    if (showLoginModal) {
-      // Wait a bit for the modal to render
-      setTimeout(() => {
-        if (window.google && document.getElementById('modal-google-signin-button')) {
+    if (!loading && !user && googleButtonRef.current) {
+      const initializeGoogleButton = () => {
+        if (window.google && googleButtonRef.current) {
           window.google.accounts.id.initialize({
             client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
             callback: handleGoogleSignIn,
           });
           window.google.accounts.id.renderButton(
-            document.getElementById('modal-google-signin-button'),
+            googleButtonRef.current,
             {
               type: 'standard',
               theme: 'outline',
-              size: 'large',
+              size: 'medium',
               text: 'signin_with',
               shape: 'rectangular',
             }
           );
         }
-      }, 100);
+      };
+
+      // Check if Google script is already loaded
+      if (document.readyState === 'complete') {
+        initializeGoogleButton();
+      } else {
+        window.addEventListener('load', initializeGoogleButton);
+        return () => window.removeEventListener('load', initializeGoogleButton);
+      }
     }
-  }, [showLoginModal]);
+  }, [loading, user]);
 
   const checkAuth = async () => {
     try {
@@ -72,7 +78,6 @@ export function Navbar() {
       });
 
       if (res.ok) {
-        setShowLoginModal(false);
         await checkAuth();
         window.location.href = '/admin';
       } else {
@@ -94,27 +99,24 @@ export function Navbar() {
     }
   };
 
-  // Links públicos (visíveis para todos)
-  const publicLinks = [{ href: '/', label: 'Livros' }];
-
-  // Links de admin (visíveis apenas para usuários logados)
+  // Admin links (only visible when logged in)
   const adminLinks = [
     { href: '/locatarios', label: 'Locatários' },
     { href: '/admin', label: 'Admin' },
   ];
 
-  const navLinks = user ? [...publicLinks, ...adminLinks] : publicLinks;
+  const navLinks = user ? adminLinks : [];
 
   return (
-    <>
-      <nav className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-8">
-              <Link href="/" className="text-xl font-bold text-[#ff4e00]">
-                Biblioteca em Movimento
-              </Link>
+    <nav className="bg-white shadow-sm border-b">
+      <div className="px-4 sm:px-6 lg:px-8 xl:px-16 mx-auto">
+        <div className="flex items-center justify-between h-16">
+          <div className="flex items-center gap-8">
+            <Link href="/" >
+              <img src="/logo.png" alt="centro em movimento" className="h-8" />
+            </Link>
 
+            {navLinks.length > 0 && (
               <div className="hidden md:flex items-center gap-4">
                 {navLinks.map((link) => (
                   <Link
@@ -129,94 +131,70 @@ export function Navbar() {
                   </Link>
                 ))}
               </div>
-            </div>
+            )}
+          </div>
 
-            <div className="flex items-center gap-4">
-              {!loading && (
-                <>
-                  {user ? (
-                    <div className="flex items-center gap-3">
-                      {user.picture && (
-                        <img
-                          src={user.picture}
-                          alt={user.name}
-                          className="w-8 h-8 rounded-full"
-                        />
-                      )}
-                      <span className="text-sm text-gray-600 hidden md:block">
-                        {user.name}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleLogout}
-                      >
-                        Sair
-                      </Button>
-                    </div>
-                  ) : (
+          <div className="text-2xl font-bold text-[#ff4e00]">
+            biblioteca em movimento
+          </div>
+
+          <div className="flex items-center gap-4">
+            {!loading && (
+              <>
+                {user ? (
+                  <div className="flex items-center gap-3">
+                    {user.picture && (
+                      <img
+                        src={user.picture}
+                        alt={user.name}
+                        className="w-8 h-8 rounded-full"
+                      />
+                    )}
+                    <span className="text-sm text-gray-600 hidden md:block">
+                      {user.name}
+                    </span>
                     <Button
-                      onClick={() => setShowLoginModal(true)}
-                      className="bg-[#ff4e00] hover:bg-[#e64500]"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleLogout}
                     >
-                      <Shield className="w-4 h-4 mr-2" />
-                      Login Admin
+                      Sair
                     </Button>
-                  )}
-                </>
-              )}
-            </div>
+                  </div>
+                ) : (
+                  <div ref={googleButtonRef} />
+                )}
+              </>
+            )}
           </div>
         </div>
-      </nav>
-
-      {/* Login Modal */}
-      {showLoginModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#ff4e00] rounded-lg flex items-center justify-center">
-                  <Shield className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">Login Admin</h2>
-                  <p className="text-sm text-gray-500">Acesso restrito a administradores</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowLoginModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-800">
-                  Faça login com sua conta Google para acessar o painel administrativo.
-                </p>
-              </div>
-
-              <div id="modal-google-signin-button" className="flex justify-center py-4">
-                {/* Google Sign-In button will be rendered here */}
-              </div>
-
-              <div className="text-center">
-                <button
-                  onClick={() => setShowLoginModal(false)}
-                  className="text-sm text-gray-500 hover:text-gray-700"
-                >
-                  Cancelar e voltar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+      </div>
+    </nav>
   );
+}
+
+// Add TypeScript declaration for Google API
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: {
+            client_id: string;
+            callback: (response: { credential: string }) => void;
+          }) => void;
+          renderButton: (
+            element: HTMLElement | null,
+            options: {
+              type?: string;
+              theme?: string;
+              size?: string;
+              text?: string;
+              shape?: string;
+            }
+          ) => void;
+        };
+      };
+    };
+  }
 }

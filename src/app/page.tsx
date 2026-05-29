@@ -4,15 +4,18 @@ import { useEffect, useState, useMemo } from 'react';
 import { BookCard } from '@/components/book-card';
 import { RentModal } from '@/components/rent-modal';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Search, Filter, X, ChevronDown } from 'lucide-react';
 import type { Book, Rental } from '@/lib/google-sheets';
 
 export default function HomePage() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [rentingBook, setRentingBook] = useState<Book | null>(null);
+
+  // Genre filter state
+  const [showGenreFilter, setShowGenreFilter] = useState(false);
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
 
   useEffect(() => {
     fetchBooks();
@@ -32,15 +35,53 @@ export default function HomePage() {
     }
   };
 
+  // Get all unique genres from books
+  const allGenres = useMemo(() => {
+    const genres = new Set<string>();
+    books.forEach(book => {
+      book.genres.forEach(genre => {
+        if (genre && genre.trim()) {
+          genres.add(genre.trim());
+        }
+      });
+    });
+    const result = Array.from(genres).sort();
+    console.log('[Genre Filter] Available genres:', result);
+    return result;
+  }, [books]);
+
   const filteredBooks = useMemo(() => {
-    if (!search.trim()) return books;
-    const query = search.toLowerCase();
-    return books.filter(
-      (book) =>
-        book.filter.includes(query) ||
-        book.genres.some((g) => g.toLowerCase().includes(query))
+    console.log('[Genre Filter] Selected genres:', selectedGenres);
+    console.log('[Genre Filter] Total books:', books.length);
+
+    const filtered = books.filter(book => {
+      // Text search
+      const matchesSearch = !search.trim() ||
+        book.filter.includes(search.toLowerCase()) ||
+        book.genres.some(g => g.toLowerCase().includes(search.toLowerCase()));
+
+      // Genre filter
+      const matchesGenres = selectedGenres.length === 0 ||
+        selectedGenres.some(genre => book.genres.includes(genre));
+
+      return matchesSearch && matchesGenres;
+    });
+
+    console.log('[Genre Filter] Filtered books:', filtered.length);
+    return filtered;
+  }, [books, search, selectedGenres]);
+
+  const toggleGenre = (genre: string) => {
+    setSelectedGenres(prev =>
+      prev.includes(genre)
+        ? prev.filter(g => g !== genre)
+        : [...prev, genre]
     );
-  }, [books, search]);
+  };
+
+  const clearGenreFilter = () => {
+    setSelectedGenres([]);
+  };
 
   const handleRent = async (rentalData: {
     name: string;
@@ -85,52 +126,96 @@ export default function HomePage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+    <div className="flex flex-col gap-2">
+      {/* Search and Filter Section */}
+      <div className="flex flex-row items-center justify-between gap-4">
+        {/* Search Bar */}
+        <div className="flex w-3/4">
           <Input
             type="text"
             placeholder="Buscar por título, autor, ISBN ou gênero..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
           />
         </div>
-        <p className="mt-3 text-sm text-gray-500">
-          {filteredBooks.length} {filteredBooks.length === 1 ? 'livro' : 'livros'} encontrado
-          {filteredBooks.length !== 1 ? 's' : ''}
-        </p>
+
+        {/* Genre Filter Dropdown */}
+        <div className="w-1/4">
+          <button
+            onClick={() => setShowGenreFilter(!showGenreFilter)}
+            className="w-full flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Filter className="w-4 h-4" />
+            <span className="text-sm">filtrar por gênero</span>
+            {selectedGenres.length > 0 && (
+              <span className="bg-[#ff4e00] text-white text-xs px-2 py-0.5 rounded-full">
+                {selectedGenres.length}
+              </span>
+            )}
+            <ChevronDown className={`w-4 h-4 transition-transform ${showGenreFilter ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Genre Filter Dropdown Panel */}
+          {showGenreFilter && (
+            <div className="absolute top-full left-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto">
+              <div className="p-3 border-b border-gray-100 flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">Selecionar Gêneros</span>
+                {selectedGenres.length > 0 && (
+                  <button
+                    onClick={clearGenreFilter}
+                    className="text-xs text-[#ff4e00] hover:underline"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+              <div className="p-2">
+                {allGenres.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">Nenhum gênero encontrado</p>
+                ) : (
+                  allGenres.map((genre) => (
+                    <label
+                      key={genre}
+                      className="flex items-center gap-3 px-2 py-2 hover:bg-gray-50 rounded cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedGenres.includes(genre)}
+                        onChange={() => toggleGenre(genre)}
+                        className="w-4 h-4 rounded border-gray-300 text-[#ff4e00] focus:ring-[#ff4e00]"
+                      />
+                      <span className="text-sm text-gray-700">{genre}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="grid gap-4">
+      {/* Results Count */}
+      <p className="text-sm text-gray-500">
+        {filteredBooks.length} {filteredBooks.length === 1 ? 'livro' : 'livros'} encontrado
+        {filteredBooks.length !== 1 ? 's' : ''}
+        {selectedGenres.length > 0 && ` • Filtrando por: ${selectedGenres.join(', ')}`}
+      </p>
+
+      {/* Books List */}
+      <div className="flex flex-col gap-4 mt-4">
         {filteredBooks.map((book) => (
           <BookCard
             key={book.rowId}
             book={book}
-            onSelect={setSelectedBook}
             onRent={setRentingBook}
           />
         ))}
       </div>
 
       {filteredBooks.length === 0 && (
-        <div className="text-center py-12">
-          <div className="text-4xl mb-4">📚</div>
-          <h3 className="text-lg font-semibold text-gray-900">Nenhum livro encontrado</h3>
-          <p className="text-gray-500">Tente ajustar seus termos de busca</p>
+        <div className="text-center py-12 bg-white rounded-lg shadow-sm">
+          <h3 className="text-lg text-gray-500">nenhum livro encontrado</h3>
         </div>
-      )}
-
-      {selectedBook && (
-        <BookDetailModal
-          book={selectedBook}
-          onClose={() => setSelectedBook(null)}
-          onRent={() => {
-            setRentingBook(selectedBook);
-            setSelectedBook(null);
-          }}
-        />
       )}
 
       {rentingBook && (
@@ -140,110 +225,6 @@ export default function HomePage() {
           onRent={handleRent}
         />
       )}
-    </div>
-  );
-}
-
-function BookDetailModal({
-  book,
-  onClose,
-  onRent,
-}: {
-  book: Book;
-  onClose: () => void;
-  onRent: () => void;
-}) {
-  const availableCopies = book.quantity - book.quantityRented;
-  const canRent = availableCopies > 0;
-
-  return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="p-6 border-b">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">{book.title}</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-2xl"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-
-        <div className="p-6 space-y-4">
-          <div>
-            <strong>Autor:</strong> {book.author}
-          </div>
-          {book.subtitle && (
-            <div>
-              <strong>Subtítulo:</strong> {book.subtitle}
-            </div>
-          )}
-          <div>
-            <strong>ISBN:</strong> {book.isbn || 'N/A'}
-          </div>
-          {book.publicationDate && (
-            <div>
-              <strong>Data de Publicação:</strong> {book.publicationDate}
-            </div>
-          )}
-          {book.publisher && (
-            <div>
-              <strong>Editora:</strong> {book.publisher}
-            </div>
-          )}
-          {book.genres.length > 0 && (
-            <div>
-              <strong>Gêneros:</strong>{' '}
-              {book.genres.map((g, i) => (
-                <span
-                  key={g}
-                  className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 mr-1"
-                >
-                  {g}
-                </span>
-              ))}
-            </div>
-          )}
-          {book.description && (
-            <div>
-              <strong>Descrição:</strong>
-              <p className="mt-1 text-gray-600">{book.description}</p>
-            </div>
-          )}
-
-          <div className="bg-gray-50 rounded-lg p-4 mt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <strong>Disponibilidade:</strong>{' '}
-                <span
-                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${canRent
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-red-100 text-red-800'
-                    }`}
-                >
-                  {availableCopies} de {book.quantity} disponíveis
-                </span>
-              </div>
-              {canRent && (
-                <button
-                  onClick={onRent}
-                  className="bg-[#ff4e00] text-white px-4 py-2 rounded-lg hover:bg-[#e64500] transition-colors"
-                >
-                  Alugar Livro
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

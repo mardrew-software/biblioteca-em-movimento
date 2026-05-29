@@ -1,72 +1,175 @@
 'use client';
 
+import { useState } from 'react';
 import { Book } from '@/lib/google-sheets';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface BookCardProps {
   book: Book;
-  onSelect: (book: Book) => void;
   onRent: (book: Book) => void;
 }
 
-export function BookCard({ book, onSelect, onRent }: BookCardProps) {
+export function BookCard({ book, onRent }: BookCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const availableCopies = book.quantity - book.quantityRented;
   const canRent = availableCopies > 0;
 
   return (
-    <div
-      className="bg-white rounded-lg shadow-sm p-6 cursor-pointer hover:shadow-md transition-shadow"
-      onClick={() => onSelect(book)}
-    >
-      <div className="flex gap-4">
-        <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-semibold text-gray-900 truncate">
-            {book.title}
-          </h3>
-          <p className="text-sm text-gray-500 mt-1">{book.author}</p>
-          
-          {book.genres.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
-              {book.genres.slice(0, 3).map((genre) => (
-                <span
-                  key={genre}
-                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800"
-                >
-                  {genre}
-                </span>
-              ))}
-              {book.genres.length > 3 && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                  +{book.genres.length - 3}
+    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      {/* Collapsible Header */}
+      <div
+        className="p-6 cursor-pointer hover:bg-gray-50 transition-colors"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3">
+              <h3 className="text-lg font-semibold text-gray-900 truncate">
+                {book.title}
+              </h3>
+              {book.subtitle && (
+                <span className="text-sm text-gray-500 hidden sm:block">
+                  {book.subtitle}
                 </span>
               )}
             </div>
-          )}
-        </div>
+            <p className="text-sm text-gray-500 mt-1">{book.author}</p>
 
-        <div className="text-right">
-          <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              canRent
+            {book.genres.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {book.genres.slice(0, 3).map((genre) => (
+                  <span
+                    key={genre}
+                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800"
+                  >
+                    {genre}
+                  </span>
+                ))}
+                {book.genres.length > 3 && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                    +{book.genres.length - 3}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-4 ml-4">
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium whitespace-nowrap ${canRent
                 ? 'bg-green-100 text-green-800'
                 : 'bg-red-100 text-red-800'
-            }`}
-          >
-            {availableCopies} disponíveis
-          </span>
-          
-          {canRent && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onRent(book);
-              }}
-              className="block mt-2 bg-[#ff4e00] text-white text-sm px-4 py-2 rounded hover:bg-[#e64500] transition-colors"
+                }`}
             >
-              Alugar
-            </button>
-          )}
+              {canRent ? 'Disponível' : 'Indisponível'}
+            </span>
+
+            {isExpanded ? (
+              <ChevronUp className="w-5 h-5 text-gray-400" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-gray-400" />
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Collapsible Content */}
+      {isExpanded && (
+        <div className="flex flex-col gap-4 border-t border-gray-100 p-6 bg-gray-50">
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Left Column - Details */}
+            <div className="flex flex-col gap-2">
+              {book.isbn && (
+                <div className="flex items-center flex-row gap-2">
+                  <span className="text-sm text-gray-500">ISBN</span>
+                  <p className="text-sm font-medium text-gray-900">{book.isbn}</p>
+                </div>
+              )}
+
+              {book.id !== undefined && (
+                <div className="flex items-center flex-row gap-2">
+                  <span className="text-sm text-gray-500">ID</span>
+                  <p className="text-sm font-medium text-gray-900">{book.id}</p>
+                </div>
+              )}
+
+              {book.subtitle && (
+                <div className="flex items-center flex-row gap-2">
+                  <span className="text-sm text-gray-500">Subtítulo</span>
+                  <p className="text-sm font-medium text-gray-900">{book.subtitle}</p>
+                </div>
+              )}
+
+              {book.publisher && (
+                <div className="flex items-center flex-row gap-2">
+                  <span className="text-sm text-gray-500">Editora</span>
+                  <p className="text-sm font-medium text-gray-900">{book.publisher}</p>
+                </div>
+              )}
+
+              {book.collection && (
+                <div className="flex items-center flex-row gap-2">
+                  <span className="text-sm text-gray-500">Coleção</span>
+                  <p className="text-sm text-gray-700">{book.collection}</p>
+                </div>
+              )}
+
+              {book.publicationDate && (
+                <div className="flex items-center flex-row gap-2">
+                  <span className="text-sm text-gray-500">Ano</span>
+                  <p className="text-sm font-medium text-gray-900">{book.publicationDate}</p>
+                </div>
+              )}
+
+              {book.city && (
+                <div className="flex items-center flex-row gap-2">
+                  <span className="text-sm text-gray-500">Cidade</span>
+                  <p className="text-sm text-gray-700">{book.city}</p>
+                </div>
+              )}
+
+              {book.notes && (
+                <div className="flex items-center flex-row gap-2">
+                  <span className="text-sm text-gray-500">Notas</span>
+                  <p className="text-sm text-gray-700">{book.notes}</p>
+                </div>
+              )}
+            </div>
+
+
+            {/* Right Column - Rental Info & Action */}
+            <div className='flex flex-col gap-4 justify-end'>
+              {book.description && (
+                <div className="flex flex-col">
+                  <span className="text-sm text-gray-500">Descrição</span>
+                  <p className="text-sm text-gray-700">{book.description}</p>
+                </div>
+              )}
+
+              <div className='flex flex-row gap-4 justify-end'>
+                <div className='flex flex-row gap-4 bg-white py-2 px-4'>
+                  <div className="flex items-center flex-row gap-1">
+                    <span className="text-sm text-gray-500">Disponíveis</span>
+                    <p className="text-sm text-gray-700">{canRent ? `${book.quantityRented} de ${book.quantityRented}` : `N/A`}</p>
+                  </div>
+
+                  <button
+                    onClick={() => onRent(book)}
+                    disabled={!canRent}
+                    className={`${!canRent ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#ff4e00]  cursor-pointer hover:bg-[#e64500] transition-colors'} text-white text-sm font-medium px-4 py-1 rounded-sm`}
+                  >
+                    Reservar
+                  </button>
+
+                </div>
+              </div>
+            </div>
+
+
+          </div>
+        </div>
+      )
+      }
+    </div >
   );
 }

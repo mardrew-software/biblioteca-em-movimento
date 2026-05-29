@@ -1,54 +1,147 @@
 import { google } from 'googleapis';
 import { GoogleAuth } from 'google-auth-library';
 
-const SPREADSHEET_ID = process.env.SPREADSHEET_ID || '';
-const SHEET_NAME = process.env.SHEET_NAME || 'Livros';
+let auth: GoogleAuth | null = null;
+let sheets: ReturnType<typeof google.sheets> | null = null;
 
-const auth = new GoogleAuth({
-    keyFile: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_FILE || './service_account_credentials.json',
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-});
+export function getSpreadsheetId(): string {
+    const id = process.env.SPREADSHEET_ID || '';
+    return id;
+}
 
-const sheets = google.sheets({ version: 'v4', auth });
+export function getSheetName(): string {
+    return process.env.SHEET_NAME || 'Livros';
+}
+
+function initializeGoogleAuth() {
+    if (sheets) return sheets;
+
+    const keyFile = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_FILE;
+    const credentials = process.env.GOOGLE_SERVICE_ACCOUNT_CREDENTIALS;
+
+    console.log('[Google Auth] ==========================================');
+    console.log('[Google Auth] Initializing...');
+    console.log('[Google Auth] SPREADSHEET_ID:', SPREADSHEET_ID);
+    console.log('[Google Auth] SHEET_NAME:', SHEET_NAME);
+    console.log('[Google Auth] keyFile env var:', keyFile ? keyFile : 'NOT SET');
+    console.log('[Google Auth] credentials env var:', credentials ? 'SET (length: ' + credentials.length + ')' : 'NOT SET');
+
+    if (!keyFile && !credentials) {
+        console.error('[Google Auth] ERROR: GOOGLE_SERVICE_ACCOUNT_KEY_FILE or GOOGLE_SERVICE_ACCOUNT_CREDENTIALS environment variable is required');
+        return null;
+    }
+
+    try {
+        if (credentials) {
+            // Parse credentials from environment variable
+            console.log('[Google Auth] Using credentials from environment variable');
+            const parsedCredentials = JSON.parse(credentials);
+            console.log('[Google Auth] client_email:', parsedCredentials.client_email);
+            console.log('[Google Auth] project_id:', parsedCredentials.project_id);
+            auth = new GoogleAuth({
+                credentials: parsedCredentials,
+                scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+            });
+        } else if (keyFile) {
+            // Use key file - check if file exists
+            console.log('[Google Auth] Using key file:', keyFile);
+            const fs = require('fs');
+            const path = require('path');
+            const fullPath = path.resolve(keyFile);
+            console.log('[Google Auth] Full path:', fullPath);
+            console.log('[Google Auth] File exists:', fs.existsSync(fullPath));
+
+            if (fs.existsSync(fullPath)) {
+                const fileContent = fs.readFileSync(fullPath, 'utf8');
+                const creds = JSON.parse(fileContent);
+                console.log('[Google Auth] client_email from file:', creds.client_email);
+            }
+
+            auth = new GoogleAuth({
+                keyFile,
+                scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+            });
+        }
+
+        if (!auth) {
+            console.error('[Google Auth] ERROR: Failed to initialize - auth is null');
+            return null;
+        }
+
+        sheets = google.sheets({ version: 'v4', auth });
+        console.log('[Google Auth] Successfully initialized Google Sheets client');
+        console.log('[Google Auth] ==========================================');
+        return sheets;
+    } catch (error) {
+        console.error('[Google Auth] ERROR: Failed to initialize Google Auth:', error);
+        console.log('[Google Auth] ==========================================');
+        return null;
+    }
+}
+
+export function getSheetsClient() {
+    if (!sheets) {
+        return initializeGoogleAuth();
+    }
+    return sheets;
+}
+
+const SPREADSHEET_ID = getSpreadsheetId();
+const SHEET_NAME = getSheetName();
+
+function getSheets() {
+    const sheets = getSheetsClient();
+    if (!sheets) {
+        throw new Error('Google Sheets client not initialized. Check your service account configuration.');
+    }
+    return sheets;
+}
 
 export const bookColsNumber = {
-    isbn: 0,
-    author: 1,
-    title: 2,
-    subtitle: 3,
-    publication_date: 4,
-    description: 5,
-    genres: 6,
-    publisher: 7,
-    quantity: 8,
-    rental_names: 9,
-    rental_emails: 10,
-    rental_dates: 11,
-    rental_return_dates: 12,
-    rental_status: 13,
-    notes: 14,
+    id: 0,
+    isbn: 1,
+    author: 2,
+    title: 3,
+    subtitle: 4,
+    publication_date: 5,
+    description: 6,
+    genres: 7,
+    publisher: 8,
+    collection: 9,
+    city: 10,
+    quantity: 11,
+    rental_names: 12,
+    rental_emails: 13,
+    rental_dates: 14,
+    rental_return_dates: 15,
+    rental_status: 16,
+    notes: 17,
 };
 
 export const bookColsAlphabet = {
-    isbn: 'A',
-    author: 'B',
-    title: 'C',
-    subtitle: 'D',
-    publication_date: 'E',
-    description: 'F',
-    genres: 'G',
-    publisher: 'H',
-    quantity: 'I',
-    rental_names: 'J',
-    rental_emails: 'K',
-    rental_dates: 'L',
-    rental_return_dates: 'M',
-    status: 'N',
-    notes: 'O',
+    id: 'A',
+    isbn: 'B',
+    author: 'C',
+    title: 'D',
+    subtitle: 'E',
+    publication_date: 'F',
+    description: 'G',
+    genres: 'H',
+    publisher: 'I',
+    collection: 'J',
+    city: 'K',
+    quantity: 'L',
+    rental_names: 'M',
+    rental_emails: 'N',
+    rental_dates: 'O',
+    rental_return_dates: 'P',
+    status: 'Q',
+    notes: 'Q',
 };
 
 export interface Book {
     rowId: number;
+    id: string;
     isbn: string;
     author: string;
     title: string;
@@ -57,6 +150,8 @@ export interface Book {
     description: string;
     genres: string[];
     publisher: string;
+    collection: string;
+    city: string;
     quantity: number;
     rentals: Rental[];
     notes: string;
@@ -100,50 +195,45 @@ function mapRentals(
     const rentalReturnDates = parseRentals(rental_return_dates);
     const rentalStatus = parseRentals(rental_status);
 
-    const rentals: Rental[] = [];
-    for (let i = 0; i < rentalNames.length; i++) {
-        if (rentalNames[i] && rentalNames[i].trim()) {
-            rentals.push({
-                name: rentalNames[i].trim(),
-                email: rentalEmails[i]?.trim() || '',
-                date: rentalDates[i]?.trim() || '',
-                returnDate: rentalReturnDates[i]?.trim() || '',
-                status: rentalStatus[i]?.trim() || '',
-            });
-        }
-    }
-    return rentals;
+    return rentalNames.map((name, index) => ({
+        name: name?.trim() || '',
+        email: rentalEmails[index]?.trim() || '',
+        date: rentalDates[index]?.trim() || '',
+        returnDate: rentalReturnDates[index]?.trim() || '',
+        status: rentalStatus[index]?.trim() || '',
+    }));
 }
 
-function getRentals(b: string[]): Rental[] {
-    if (b.length >= bookColsNumber.rental_status + 1) {
-        return mapRentals(
-            b[bookColsNumber.rental_names],
-            b[bookColsNumber.rental_emails],
-            b[bookColsNumber.rental_dates],
-            b[bookColsNumber.rental_return_dates],
-            b[bookColsNumber.rental_status]
-        );
-    }
-    return [];
+function getRentals(values: string[]): Rental[] {
+    const rentalNames = values[bookColsNumber.rental_names] || '';
+    const rentalEmails = values[bookColsNumber.rental_emails] || '';
+    const rentalDates = values[bookColsNumber.rental_dates] || '';
+    const rentalReturnDates = values[bookColsNumber.rental_return_dates] || '';
+    const rentalStatus = values[bookColsNumber.rental_status] || '';
+
+    return mapRentals(rentalNames, rentalEmails, rentalDates, rentalReturnDates, rentalStatus)
+        .filter(r => r.name && r.name.trim().length > 0);
 }
 
 function mapGenres(genres: string): string[] {
-    return genres
-        .split(',')
-        .map((g) => g.trim().toUpperCase())
-        .filter(Boolean);
+    if (!genres) return [];
+    return genres.split(/[,\/]/).map(g => g.trim()).filter(Boolean);
 }
 
-export function mapBooks(books: string[][]): Book[] {
-    return books
-        .filter((_, i) => i !== 0)
+export function mapBooks(values: string[][]): Book[] {
+    if (!values || values.length < 2) return [];
+
+    // Skip header row
+    return values
+        .slice(1)
         .map((b, index) => {
             const rentals = getRentals(b);
             return {
-                filter: `${b[bookColsNumber.isbn]} ${b[bookColsNumber.title]} ${b[bookColsNumber.author]}`.toLowerCase(),
-                rowId: index + 2,
+                rowId: index + 2, // +2 because row 1 is header
+                id: b[bookColsNumber.id] || '',
                 isbn: b[bookColsNumber.isbn] || '',
+                collection: b[bookColsNumber.collection] || '',
+                city: b[bookColsNumber.city] || '',
                 author: b[bookColsNumber.author] || '',
                 title: b[bookColsNumber.title] || '',
                 subtitle: b[bookColsNumber.subtitle] || '',
@@ -155,18 +245,25 @@ export function mapBooks(books: string[][]): Book[] {
                 rentals,
                 notes: b.length >= bookColsNumber.notes + 1 ? b[bookColsNumber.notes] : '',
                 quantityRented: rentals.length,
+                filter: `${b[bookColsNumber.title] || ''} ${b[bookColsNumber.author] || ''} ${b[bookColsNumber.isbn] || ''}`.toLowerCase(),
             };
         });
 }
 
 export async function getBooks(): Promise<Book[]> {
-    const response = await sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
-        range: SHEET_NAME,
-    });
+    try {
+        const sheetsClient = getSheets();
+        const response = await sheetsClient.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: SHEET_NAME,
+        });
 
-    const values = response.data.values || [];
-    return mapBooks(values);
+        const values = response.data.values || [];
+        return mapBooks(values);
+    } catch (error) {
+        console.error('Error fetching books from Google Sheets:', error);
+        throw new Error('Failed to fetch books. Please check your Google Sheets configuration.');
+    }
 }
 
 export function getCellToUpdate(rowId: number, colName: string): string {
@@ -237,173 +334,64 @@ export function removeFromRentalRange(values: string[], valueToRemove: { name: s
 
 export function mapBookToRange(book: Partial<Book>): string[] {
     return [
+        `${book.id || ''}`,
         `${book.isbn || ''}`,
+        `${book.collection || ''}`,
+        `${book.city || ''}`,
         `${book.author || ''}`,
         `${book.title || ''}`,
         `${book.subtitle || ''}`,
         `${book.publicationDate || ''}`,
         `${book.description || ''}`,
-        `${book.genres?.map((g) => g.toUpperCase()).join(',') || ''}`,
+        Array.isArray(book.genres) ? book.genres.join(', ') : (book.genres || ''),
         `${book.publisher || ''}`,
         `${book.quantity || 0}`,
     ];
 }
 
-export async function rentBook(rowId: number, rental: Rental): Promise<void> {
-    const response = await sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
-        range: `${SHEET_NAME}!${getTotalRange(rowId)}`,
-    });
-
-    const row = response.data.values?.[0] || [];
-    const updatedRange = pushToRentalRange(row, rental);
-
-    await sheets.spreadsheets.values.update({
-        spreadsheetId: SPREADSHEET_ID,
-        range: `${SHEET_NAME}!${getRentalRangeToUpdate(rowId)}`,
-        valueInputOption: 'RAW',
-        requestBody: {
-            values: [updatedRange],
-        },
-    });
-}
-
-export async function returnBook(rowId: number, rentalToRemove: { name: string; email: string }): Promise<void> {
-    const response = await sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
-        range: `${SHEET_NAME}!${getTotalRange(rowId)}`,
-    });
-
-    const row = response.data.values?.[0] || [];
-    const updatedRange = removeFromRentalRange(row, rentalToRemove);
-
-    await sheets.spreadsheets.values.update({
-        spreadsheetId: SPREADSHEET_ID,
-        range: `${SHEET_NAME}!${getRentalRangeToUpdate(rowId)}`,
-        valueInputOption: 'RAW',
-        requestBody: {
-            values: [updatedRange],
-        },
-    });
-}
-
 export async function saveBook(book: Partial<Book> & { rowId?: number }): Promise<void> {
-    const rowId = book.rowId || (await getNextRowId());
+    try {
+        const sheetsClient = getSheets();
+        const rowId = book.rowId;
+        const range = book.rowId ? getTotalRange(book.rowId) : `${SHEET_NAME}!A1`;
 
-    await sheets.spreadsheets.values.update({
-        spreadsheetId: SPREADSHEET_ID,
-        range: `${SHEET_NAME}!${getBookRangeToUpdate(rowId)}`,
-        valueInputOption: 'RAW',
-        requestBody: {
-            values: [mapBookToRange(book)],
-        },
-    });
-
-    if (book.notes !== undefined) {
-        await sheets.spreadsheets.values.update({
-            spreadsheetId: SPREADSHEET_ID,
-            range: `${SHEET_NAME}!${getCellToUpdate(rowId, bookColsAlphabet.notes)}`,
-            valueInputOption: 'RAW',
-            requestBody: {
-                values: [[book.notes]],
-            },
-        });
+        if (rowId) {
+            // Update existing book
+            await sheetsClient.spreadsheets.values.update({
+                spreadsheetId: SPREADSHEET_ID,
+                range,
+                valueInputOption: 'USER_ENTERED',
+                requestBody: {
+                    values: [mapBookToRange(book)],
+                },
+            });
+        } else {
+            // Append new book
+            await sheetsClient.spreadsheets.values.append({
+                spreadsheetId: SPREADSHEET_ID,
+                range: `${SHEET_NAME}!A1`,
+                valueInputOption: 'USER_ENTERED',
+                requestBody: {
+                    values: [mapBookToRange(book)],
+                },
+            });
+        }
+    } catch (error) {
+        console.error('Error saving book to Google Sheets:', error);
+        throw new Error('Failed to save book. Please check your Google Sheets configuration.');
     }
-}
-
-async function getNextRowId(): Promise<number> {
-    const response = await sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
-        range: `${SHEET_NAME}`,
-    });
-
-    const values = response.data.values || [];
-    return values.length + 1;
 }
 
 export async function deleteBook(rowId: number): Promise<void> {
-    await sheets.spreadsheets.values.clear({
-        spreadsheetId: SPREADSHEET_ID,
-        range: `${SHEET_NAME}!${getTotalRange(rowId)}`,
-    });
-}
-
-export function getBooksWithStatus(books: string[][], status: string) {
-    const booksWithStatus: any[] = [];
-
-    for (let i = 0; i < books.length; i++) {
-        const allStatus = books[i][bookColsNumber.rental_status];
-        if (String(allStatus).match(status)) {
-            const rentalNames = parseRentals(books[i][bookColsNumber.rental_names]);
-            const rentalEmails = parseRentals(books[i][bookColsNumber.rental_emails]);
-            const rentalDates = parseRentals(books[i][bookColsNumber.rental_dates]);
-            const rentalReturnDates = parseRentals(books[i][bookColsNumber.rental_return_dates]);
-            const rentalStatus = parseRentals(allStatus);
-            const rentals = [];
-
-            for (let j = 0; j < rentalStatus.length; j++) {
-                if (rentalStatus[j] === status) {
-                    rentals.push({
-                        order: j,
-                        name: rentalNames[j],
-                        email: rentalEmails[j],
-                        date: rentalDates[j],
-                        returnDate: rentalReturnDates[j],
-                        status: rentalStatus[j],
-                    });
-                }
-            }
-            booksWithStatus.push({
-                index: i,
-                rowId: i + 2,
-                title: books[i][bookColsNumber.title],
-                author: [books[i][bookColsNumber.author]],
-                rentals,
-            });
-        }
+    try {
+        const sheetsClient = getSheets();
+        // Clear the row
+        await sheetsClient.spreadsheets.values.clear({
+            spreadsheetId: SPREADSHEET_ID,
+            range: getTotalRange(rowId),
+        });
+    } catch (error) {
+        console.error('Error deleting book from Google Sheets:', error);
+        throw new Error('Failed to delete book. Please check your Google Sheets configuration.');
     }
-    return booksWithStatus;
-}
-
-export function convertDate(date: string): Date {
-    const d = date.split('/');
-    return new Date(`${d[2]}/${d[1]}/${d[0]}`);
-}
-
-export function returnWeeksDiff(date1: Date, date2: Date): number {
-    return (date2.getTime() - date1.getTime()) / (24 * 3600 * 1000 * 7);
-}
-
-export async function getLocatarios(): Promise<Locatario[]> {
-    const response = await sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
-        range: SHEET_NAME,
-    });
-
-    const books = response.data.values || [];
-    books.splice(0, 1);
-
-    const locatarios: Locatario[] = [];
-
-    const rentedBooks = getBooksWithStatus(books, 'RENTED');
-    const extendedBooks = getBooksWithStatus(books, 'EXTENDED');
-    const notifiedBooks = getBooksWithStatus(books, 'NOTIFIED');
-    const breachingBooks = getBooksWithStatus(books, 'BREACHING');
-    const allActiveBooks = [...rentedBooks, ...extendedBooks, ...notifiedBooks, ...breachingBooks];
-
-    for (const book of allActiveBooks) {
-        for (const rental of book.rentals) {
-            locatarios.push({
-                name: rental.name,
-                email: rental.email,
-                bookTitle: book.title,
-                bookAuthor: book.author,
-                since: rental.date,
-                returnDate: rental.returnDate,
-                status: rental.status,
-            });
-        }
-    }
-
-    return locatarios;
 }

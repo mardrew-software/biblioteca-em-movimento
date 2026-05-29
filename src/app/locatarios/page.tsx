@@ -6,10 +6,8 @@ import { Input } from '@/components/ui/input';
 import type { Locatario } from '@/lib/google-sheets';
 
 const statusMap: Record<string, { label: string; color: string }> = {
-  RENTED: { label: 'Ativo', color: 'bg-green-100 text-green-800' },
-  EXTENDED: { label: 'Estendido', color: 'bg-yellow-100 text-yellow-800' },
-  NOTIFIED: { label: 'Vencendo', color: 'bg-orange-100 text-orange-800' },
-  BREACHING: { label: 'Atrasado', color: 'bg-red-100 text-red-800' },
+  RENTED: { label: 'Reservado', color: 'bg-green-100 text-green-800' },
+  FREE: { label: 'Disponível', color: 'bg-yellow-100 text-yellow-800' },
 };
 
 export default function LocatariosPage() {
