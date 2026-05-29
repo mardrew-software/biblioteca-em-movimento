@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Erro ao alugar livro:', error);
+    console.error('Erro ao reservar livro:', error);
     return NextResponse.json(
-      { error: 'Erro ao alugar livro' },
+      { error: 'Erro ao reservar livro' },
       { status: 500 }
     );
   }

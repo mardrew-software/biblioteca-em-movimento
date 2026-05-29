@@ -167,6 +167,7 @@ export interface Reserva {
     bookTitle: string;
     bookAuthor: string[];
     since: string;
+    rowId: number;
 }
 
 function parseRentals(rentals: string): string[] {
@@ -255,7 +256,7 @@ export function getCellToUpdate(rowId: number, colName: string): string {
 }
 
 export function getRentalRangeToUpdate(rowId: number): string {
-    return `${getCellToUpdate(rowId, bookColsAlphabet.rental_names)}:${getCellToUpdate(rowId, bookColsAlphabet.status)}`;
+    return `${getCellToUpdate(rowId, bookColsAlphabet.rental_names)}:${getCellToUpdate(rowId, bookColsAlphabet.rental_dates)}`;
 }
 
 export function getBookRangeToUpdate(rowId: number): string {
@@ -386,7 +387,8 @@ export async function getReservas(): Promise<Reserva[]> {
                     email: rental.email,
                     bookTitle: book.title,
                     bookAuthor: [book.author],
-                    since: rental.date
+                    since: rental.date,
+                    rowId: book.rowId
                 });
             });
         });
@@ -395,5 +397,71 @@ export async function getReservas(): Promise<Reserva[]> {
     } catch (error) {
         console.error('Error fetching reservas:', error);
         throw new Error('Failed to fetch reservas.');
+    }
+}
+
+export async function returnBook(rowId: number, rental: { name: string; email: string }): Promise<void> {
+    try {
+        const sheetsClient = getSheets();
+
+        // Get current row data
+        const response = await sheetsClient.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${SHEET_NAME}!${getCellToUpdate(rowId, bookColsAlphabet.id)}:${getCellToUpdate(rowId, bookColsAlphabet.notes)}`,
+        });
+
+        const row = response.data.values?.[0];
+        if (!row) {
+            throw new Error('Row not found');
+        }
+
+        // Remove the rental from the row
+        const newRentalValues = removeFromRentalRange(row, rental);
+
+        // Update the rental columns
+        await sheetsClient.spreadsheets.values.update({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${SHEET_NAME}!${getCellToUpdate(rowId, bookColsAlphabet.rental_names)}:${getCellToUpdate(rowId, bookColsAlphabet.rental_dates)}`,
+            valueInputOption: 'USER_ENTERED',
+            requestBody: {
+                values: [[newRentalValues[0], newRentalValues[1], newRentalValues[2]]],
+            },
+        });
+    } catch (error) {
+        console.error('Error returning book:', error);
+        throw new Error('Failed to return book. Please check your Google Sheets configuration.');
+    }
+}
+
+export async function rentBook(rowId: number, rental: Rental): Promise<void> {
+    try {
+        const sheetsClient = getSheets();
+
+        // Get current row data
+        const response = await sheetsClient.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${SHEET_NAME}!${getCellToUpdate(rowId, bookColsAlphabet.id)}:${getCellToUpdate(rowId, bookColsAlphabet.notes)}`,
+        });
+
+        const row = response.data.values?.[0];
+        if (!row) {
+            throw new Error('Row not found');
+        }
+
+        // Add the rental to the row
+        const newRentalValues = pushToRentalRange(row, rental);
+
+        // Update the rental columns
+        await sheetsClient.spreadsheets.values.update({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${SHEET_NAME}!${getCellToUpdate(rowId, bookColsAlphabet.rental_names)}:${getCellToUpdate(rowId, bookColsAlphabet.rental_dates)}`,
+            valueInputOption: 'USER_ENTERED',
+            requestBody: {
+                values: [[newRentalValues[0], newRentalValues[1], newRentalValues[2]]],
+            },
+        });
+    } catch (error) {
+        console.error('Error renting book:', error);
+        throw new Error('Failed to rent book. Please check your Google Sheets configuration.');
     }
 }

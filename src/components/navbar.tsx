@@ -86,7 +86,7 @@ export function Navbar() {
 
       if (res.ok) {
         await checkAuth();
-        window.location.href = '/admin';
+        window.location.href = '/';
       } else {
         throw new Error('Falha na autenticação');
       }
@@ -108,7 +108,7 @@ export function Navbar() {
 
   return (
     <nav className="bg-white shadow-sm border-b sticky top-0 z-[100] py-1">
-      <div className="px-8 grid grid-cols-2 lg:grid-cols-3 h-16 w-full items-center">
+      <div className="px-12 grid grid-cols-2 lg:grid-cols-3 h-16 w-full items-center">
         <Link href="/" className="flex-shrink-0">
           <img src="/logo.png" alt="centro em movimento" className="h-8" />
         </Link>

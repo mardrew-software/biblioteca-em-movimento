@@ -47,6 +47,8 @@ export function GoogleSignInButton({ onSuccess }: GoogleSignInButtonProps) {
 // Add TypeScript declaration for Google API
 declare global {
     interface Window {
+        // Google API
+        // @ts-ignore
         google?: {
             accounts: {
                 id: {

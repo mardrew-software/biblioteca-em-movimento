@@ -4,8 +4,9 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import type { Reserva } from '@/lib/google-sheets';
-import { ArrowLeft, X } from 'lucide-react';
+import { ArrowLeft, X, RotateCcw, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import Link from 'next/link';
+import { ToastContainer, useToast } from '@/components/ui/toast';
 
 export default function ReservasPage() {
   const router = useRouter();
@@ -13,6 +14,8 @@ export default function ReservasPage() {
   const [loading, setLoading] = useState(true);
   const [authChecking, setAuthChecking] = useState(true);
   const [filter, setFilter] = useState('');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(null);
+  const { toasts, removeToast, success, error } = useToast();
 
   useEffect(() => {
     checkAuth();
@@ -52,16 +55,92 @@ export default function ReservasPage() {
     }
   };
 
+  const handleDevolver = async (reserva: Reserva) => {
+    try {
+      const res = await fetch('/api/admin/return', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rowId: reserva.rowId,
+          rental: { name: reserva.name, email: reserva.email }
+        })
+      });
+
+      if (res.ok) {
+        // Refresh the list
+        fetchReservas();
+        success('Livro devolvido com sucesso!');
+      } else {
+        const data = await res.json();
+        error('Erro ao devolver: ' + (data.error || 'Erro desconhecido'));
+      }
+    } catch (err) {
+      console.error('Erro ao devolver:', err);
+      error('Erro ao devolver livro');
+    }
+  };
+
+  // Helper function to parse date in DD-MM-YYYY format
+  const parseDate = (dateStr: string): Date => {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const year = parseInt(parts[2], 10);
+      return new Date(year, month, day);
+    }
+    return new Date(0);
+  };
+
+  // Helper function to format date as DD-MM-YYYY
+  const formatDate = (dateStr: string): string => {
+    const parts = dateStr.split('-');
+    if (parts.length === 3 && parts[0].length === 4) {
+      // Input is YYYY-MM-DD, convert to DD-MM-YYYY
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    // Return as is if already in DD-MM-YYYY or unknown format
+    return dateStr;
+  };
+
+  const handleSortByDate = () => {
+    if (sortDirection === null) {
+      setSortDirection('asc');
+    } else if (sortDirection === 'asc') {
+      setSortDirection('desc');
+    } else {
+      setSortDirection(null);
+    }
+  };
+
   const filteredReservas = useMemo(() => {
-    if (!filter.trim()) return reservas;
-    const query = filter.toLowerCase();
-    return reservas.filter(
-      (r) =>
-        r.name.toLowerCase().includes(query) ||
-        r.bookTitle.toLowerCase().includes(query) ||
-        r.email.toLowerCase().includes(query)
-    );
-  }, [reservas, filter]);
+    let result = reservas;
+
+    // Apply filter
+    if (filter.trim()) {
+      const query = filter.toLowerCase();
+      result = result.filter(
+        (r) =>
+          r.name.toLowerCase().includes(query) ||
+          r.bookTitle.toLowerCase().includes(query) ||
+          r.email.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply sort
+    if (sortDirection) {
+      result = [...result].sort((a, b) => {
+        const dateA = parseDate(formatDate(a.since));
+        const dateB = parseDate(formatDate(b.since));
+        return sortDirection === 'asc'
+          ? dateA.getTime() - dateB.getTime()
+          : dateB.getTime() - dateA.getTime();
+      });
+    }
+
+    return result;
+  }, [reservas, filter, sortDirection]);
 
   if (authChecking || loading) {
     return (
@@ -130,8 +209,19 @@ export default function ReservasPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Autor
                   </th>
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={handleSortByDate}
+                  >
+                    <div className="flex items-center gap-1">
+                      Data da Reserva
+                      {sortDirection === 'asc' && <ArrowUp className="w-3 h-3" />}
+                      {sortDirection === 'desc' && <ArrowDown className="w-3 h-3" />}
+                      {sortDirection === null && <ArrowUpDown className="w-3 h-3 opacity-50" />}
+                    </div>
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Data da Reserva
+                    Devolver
                   </th>
                 </tr>
               </thead>
@@ -157,7 +247,17 @@ export default function ReservasPage() {
                         : reserva.bookAuthor}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {reserva.since}
+                      {formatDate(reserva.since)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button
+                        onClick={() => handleDevolver(reserva)}
+                        className="cursor-pointer inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                        title="Devolver livro"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        Devolver
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -167,15 +267,10 @@ export default function ReservasPage() {
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-          <div className="text-4xl mb-4">📖</div>
-          <h3 className="text-lg font-semibold text-gray-900">Nenhum aluguel ativo</h3>
-          <p className="text-gray-500">
-            {filter
-              ? 'Tente ajustar seus termos de busca'
-              : 'Todos os livros estão disponíveis para aluguel'}
-          </p>
+          <h3 className="text-lg text-gray-500">Nenhuma reserva ativa</h3>
         </div>
       )}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

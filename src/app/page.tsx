@@ -6,6 +6,7 @@ import { RentModal } from '@/components/rent-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { GenreMultiSelect } from '@/components/genre-multi-select';
+import { ToastContainer, useToast } from '@/components/ui/toast';
 import { Search, Filter, X, ChevronDown, Plus, Eye } from 'lucide-react';
 import type { Book, Rental } from '@/lib/google-sheets';
 import Link from 'next/link';
@@ -16,6 +17,7 @@ export default function HomePage() {
   const [search, setSearch] = useState('');
   const [rentingBook, setRentingBook] = useState<Book | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const { toasts, removeToast, success, error } = useToast();
 
   // Genre filter state
   const [showGenreFilter, setShowGenreFilter] = useState(false);
@@ -139,13 +141,13 @@ export default function HomePage() {
 
       if (res.ok) {
         await fetchBooks();
-        alert('Livro excluído com sucesso!');
+        success('Livro excluído com sucesso!');
       } else {
         throw new Error('Erro ao excluir livro');
       }
-    } catch (error) {
-      console.error('Erro ao excluir livro:', error);
-      alert('Erro ao excluir livro. Tente novamente.');
+    } catch (err) {
+      console.error('Erro ao excluir livro:', err);
+      error('Erro ao excluir livro. Tente novamente.');
     }
   };
 
@@ -180,13 +182,13 @@ export default function HomePage() {
         await fetchBooks();
         setShowAddModal(false);
         resetForm();
-        alert(editingBook ? 'Livro atualizado com sucesso!' : 'Livro adicionado com sucesso!');
+        success(editingBook ? 'Livro atualizado com sucesso!' : 'Livro adicionado com sucesso!');
       } else {
         throw new Error('Erro ao salvar livro');
       }
-    } catch (error) {
-      console.error('Erro ao salvar livro:', error);
-      alert('Erro ao salvar livro. Tente novamente.');
+    } catch (err) {
+      console.error('Erro ao salvar livro:', err);
+      error('Erro ao salvar livro. Tente novamente.');
     }
   };
 
@@ -255,13 +257,13 @@ export default function HomePage() {
       if (res.ok) {
         await fetchBooks();
         setRentingBook(null);
-        alert('Livro alugado com sucesso!');
+        success('Livro reservado com sucesso!');
       } else {
-        throw new Error('Erro ao alugar livro');
+        throw new Error('Erro ao reservar livro');
       }
-    } catch (error) {
-      console.error('Erro ao alugar livro:', error);
-      alert('Erro ao alugar livro. Tente novamente.');
+    } catch (err) {
+      console.error('Erro ao reservar livro:', err);
+      error('Erro ao reservar livro. Tente novamente.');
     }
   };
 
@@ -279,7 +281,7 @@ export default function HomePage() {
       {isAdmin && (
         <div className="gap-4 flex flex-col lg:flex-row items-center justify-between bg-orange-50 p-4 rounded-lg border border-orange-100">
           <div>
-            <h3 className="text-lg font-semibold text-gray-700">... é preciso vir cá eu gerir, para ficar gerido...</h3>
+            <h3 className="text-lg font-semibold text-gray-900">... é preciso vir cá eu gerir, para ficar gerido...</h3>
           </div>
           <div className='flex flex-row flex-wrap gap-4'>
             <Link href="/reservas" className="flex flex-row gap-2 bg-[#ff4e00] hover:bg-[#e64500] bg-[#ff4e00] text-white shadow px-4 py-2 text-sm rounded-sm items-center">
@@ -574,6 +576,7 @@ export default function HomePage() {
           </div>
         </div>
       )}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

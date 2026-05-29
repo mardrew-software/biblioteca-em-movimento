@@ -48,7 +48,7 @@ export function RentModal({ book, onClose, onRent }: RentModalProps) {
       >
         <div className="p-3 px-6 border-b">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Reservar livro</h2>
+            <h2 className="text-xl font-semibold">reservar livro</h2>
             <button
               onClick={onClose}
               className="cursor-pointer text-gray-400 hover:text-gray-600 text-2xl"
@@ -69,7 +69,7 @@ export function RentModal({ book, onClose, onRent }: RentModalProps) {
                   : 'bg-red-100 text-red-800'
                   }`}
               >
-                {availableCopies} de {book.quantity} disponíveis
+                {book.quantityRented} de {book.quantity} disponíveis
               </span>
             </div>
           </div>
