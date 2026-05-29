@@ -113,9 +113,7 @@ export const bookColsNumber = {
     rental_names: 12,
     rental_emails: 13,
     rental_dates: 14,
-    rental_return_dates: 15,
-    rental_status: 16,
-    notes: 17,
+    notes: 15,
 };
 
 export const bookColsAlphabet = {
@@ -134,9 +132,7 @@ export const bookColsAlphabet = {
     rental_names: 'M',
     rental_emails: 'N',
     rental_dates: 'O',
-    rental_return_dates: 'P',
-    status: 'Q',
-    notes: 'Q',
+    notes: 'P',
 };
 
 export interface Book {
@@ -163,18 +159,14 @@ export interface Rental {
     name: string;
     email: string;
     date: string;
-    returnDate: string;
-    status: string;
 }
 
-export interface Locatario {
+export interface Reserva {
     name: string;
     email: string;
     bookTitle: string;
     bookAuthor: string[];
     since: string;
-    returnDate: string;
-    status: string;
 }
 
 function parseRentals(rentals: string): string[] {
@@ -185,22 +177,16 @@ function parseRentals(rentals: string): string[] {
 function mapRentals(
     rental_names: string,
     rental_emails: string,
-    rental_dates: string,
-    rental_return_dates: string,
-    rental_status: string
+    rental_dates: string
 ): Rental[] {
     const rentalNames = parseRentals(rental_names);
     const rentalEmails = parseRentals(rental_emails);
     const rentalDates = parseRentals(rental_dates);
-    const rentalReturnDates = parseRentals(rental_return_dates);
-    const rentalStatus = parseRentals(rental_status);
 
     return rentalNames.map((name, index) => ({
         name: name?.trim() || '',
         email: rentalEmails[index]?.trim() || '',
-        date: rentalDates[index]?.trim() || '',
-        returnDate: rentalReturnDates[index]?.trim() || '',
-        status: rentalStatus[index]?.trim() || '',
+        date: rentalDates[index]?.trim() || ''
     }));
 }
 
@@ -208,10 +194,8 @@ function getRentals(values: string[]): Rental[] {
     const rentalNames = values[bookColsNumber.rental_names] || '';
     const rentalEmails = values[bookColsNumber.rental_emails] || '';
     const rentalDates = values[bookColsNumber.rental_dates] || '';
-    const rentalReturnDates = values[bookColsNumber.rental_return_dates] || '';
-    const rentalStatus = values[bookColsNumber.rental_status] || '';
 
-    return mapRentals(rentalNames, rentalEmails, rentalDates, rentalReturnDates, rentalStatus)
+    return mapRentals(rentalNames, rentalEmails, rentalDates)
         .filter(r => r.name && r.name.trim().length > 0);
 }
 
@@ -290,18 +274,14 @@ function mapRentalsToRange(rentals: Rental[]): string[] {
     let rental_names = '';
     let rental_emails = '';
     let rental_dates = '';
-    let rental_return_dates = '';
-    let rental_status = '';
 
     rentals.forEach((r) => {
         rental_names = joinByComma(rental_names, r.name);
         rental_emails = joinByComma(rental_emails, r.email);
         rental_dates = joinByComma(rental_dates, r.date);
-        rental_return_dates = joinByComma(rental_return_dates, r.returnDate);
-        rental_status = joinByComma(rental_status, r.status);
     });
 
-    return [rental_names, rental_emails, rental_dates, rental_return_dates, rental_status];
+    return [rental_names, rental_emails, rental_dates];
 }
 
 export function pushToRentalRange(oldValues: string[], newValue: Rental): string[] {
@@ -312,9 +292,7 @@ export function pushToRentalRange(oldValues: string[], newValue: Rental): string
         rentals.push({
             name: newValue.name?.length ? newValue.name : ' ',
             email: newValue.email?.length ? newValue.email : ' ',
-            date: newValue.date?.length ? newValue.date : ' ',
-            returnDate: newValue.returnDate?.length ? newValue.returnDate : ' ',
-            status: newValue.status?.length ? newValue.status : ' ',
+            date: newValue.date?.length ? newValue.date : ' '
         });
         return mapRentalsToRange(rentals);
     } else {
@@ -393,5 +371,29 @@ export async function deleteBook(rowId: number): Promise<void> {
     } catch (error) {
         console.error('Error deleting book from Google Sheets:', error);
         throw new Error('Failed to delete book. Please check your Google Sheets configuration.');
+    }
+}
+
+export async function getReservas(): Promise<Reserva[]> {
+    try {
+        const books = await getBooks();
+        const reservas: Reserva[] = [];
+
+        books.forEach(book => {
+            book.rentals.forEach(rental => {
+                reservas.push({
+                    name: rental.name,
+                    email: rental.email,
+                    bookTitle: book.title,
+                    bookAuthor: [book.author],
+                    since: rental.date
+                });
+            });
+        });
+
+        return reservas;
+    } catch (error) {
+        console.error('Error fetching reservas:', error);
+        throw new Error('Failed to fetch reservas.');
     }
 }

@@ -2,25 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { OAuth2Client } from 'google-auth-library';
 import { createToken, setAuthCookie } from '@/lib/auth';
 
-const GOOGLE_SERVICE_ACCOUNT = process.env.GOOGLE_SERVICE_ACCOUNT || '';
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { credential } = body;
+    const { token } = body;
 
-    if (!credential) {
+    if (!token) {
       return NextResponse.json(
-        { error: 'Credencial não fornecida' },
+        { error: 'Token não fornecido' },
         { status: 400 }
       );
     }
 
     // Verificar o token do Google
-    const client = new OAuth2Client(GOOGLE_SERVICE_ACCOUNT);
+    const client = new OAuth2Client(GOOGLE_CLIENT_ID);
     const ticket = await client.verifyIdToken({
-      idToken: credential,
-      audience: GOOGLE_SERVICE_ACCOUNT,
+      idToken: token,
+      audience: GOOGLE_CLIENT_ID,
     });
 
     const payload = ticket.getPayload();
@@ -38,8 +38,8 @@ export async function POST(request: NextRequest) {
     };
 
     // Criar token JWT
-    const token = await createToken(user);
-    await setAuthCookie(token);
+    const authToken = await createToken(user);
+    await setAuthCookie(authToken);
 
     return NextResponse.json({
       success: true,

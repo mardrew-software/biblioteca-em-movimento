@@ -3,16 +3,13 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
-import type { Locatario } from '@/lib/google-sheets';
+import type { Reserva } from '@/lib/google-sheets';
+import { ArrowLeft, X } from 'lucide-react';
+import Link from 'next/link';
 
-const statusMap: Record<string, { label: string; color: string }> = {
-  RENTED: { label: 'Reservado', color: 'bg-green-100 text-green-800' },
-  FREE: { label: 'Disponível', color: 'bg-yellow-100 text-yellow-800' },
-};
-
-export default function LocatariosPage() {
+export default function ReservasPage() {
   const router = useRouter();
-  const [locatarios, setLocatarios] = useState<Locatario[]>([]);
+  const [reservas, setReservas] = useState<Reserva[]>([]);
   const [loading, setLoading] = useState(true);
   const [authChecking, setAuthChecking] = useState(true);
   const [filter, setFilter] = useState('');
@@ -25,7 +22,6 @@ export default function LocatariosPage() {
     try {
       const res = await fetch('/api/auth/me');
       if (!res.ok) {
-        // Redirecionar para home se não estiver autenticado
         router.push('/');
         return;
       }
@@ -34,39 +30,38 @@ export default function LocatariosPage() {
         router.push('/');
         return;
       }
-      // Usuário autenticado, carregar locatários
       setAuthChecking(false);
-      fetchLocatarios();
+      fetchReservas();
     } catch (error) {
       console.error('Erro ao verificar autenticação:', error);
       router.push('/');
     }
   };
 
-  const fetchLocatarios = async () => {
+  const fetchReservas = async () => {
     try {
       const res = await fetch('/api/renters');
       if (res.ok) {
         const data = await res.json();
-        setLocatarios(data.locatarios);
+        setReservas(data.reservas);
       }
     } catch (error) {
-      console.error('Erro ao buscar locatários:', error);
+      console.error('Erro ao buscar Reservas:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredLocatarios = useMemo(() => {
-    if (!filter.trim()) return locatarios;
+  const filteredReservas = useMemo(() => {
+    if (!filter.trim()) return reservas;
     const query = filter.toLowerCase();
-    return locatarios.filter(
-      (l) =>
-        l.name.toLowerCase().includes(query) ||
-        l.bookTitle.toLowerCase().includes(query) ||
-        l.email.toLowerCase().includes(query)
+    return reservas.filter(
+      (r) =>
+        r.name.toLowerCase().includes(query) ||
+        r.bookTitle.toLowerCase().includes(query) ||
+        r.email.toLowerCase().includes(query)
     );
-  }, [locatarios, filter]);
+  }, [reservas, filter]);
 
   if (authChecking || loading) {
     return (
@@ -78,10 +73,11 @@ export default function LocatariosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Locatários</h1>
-        <p className="text-gray-500 mb-4">Visualize todos os aluguéis ativos</p>
-
+      <div className="flex flex-col gap-3 bg-white rounded-lg shadow-sm p-4">
+        <div className="flex items-center gap-2">
+          <Link href="/"><ArrowLeft className="w-8 text-gray-400 cursor-pointer" onClick={() => router.back()} /></Link>
+          <h1 className="text-2xl font-bold text-gray-900">todas as reservas</h1>
+        </div>
         <div className="relative">
           <svg
             className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"
@@ -101,24 +97,32 @@ export default function LocatariosPage() {
             placeholder="Buscar por nome, título do livro ou email..."
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="pl-10"
+            className="pl-10 pr-10"
           />
+          {filter && (
+            <button
+              onClick={() => setFilter('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
-        <p className="mt-3 text-sm text-gray-500">
-          {filteredLocatarios.length} aluguel
-          {filteredLocatarios.length !== 1 ? 's' : ''} ativo
-          {filteredLocatarios.length !== 1 ? 's' : ''}
+        <p className="text-sm text-gray-500">
+          {filteredReservas.length} reserva
+          {filteredReservas.length !== 1 ? 's' : ''} ativa
+          {filteredReservas.length !== 1 ? 's' : ''}
         </p>
       </div>
 
-      {filteredLocatarios.length > 0 ? (
+      {filteredReservas.length > 0 ? (
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Locatário
+                    Reserva
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Livro
@@ -127,51 +131,33 @@ export default function LocatariosPage() {
                     Autor
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Desde
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Devolução
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                    Data da Reserva
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredLocatarios.map((locatario, index) => (
-                  <tr key={`${locatario.name}-${locatario.bookTitle}-${index}`}>
+                {filteredReservas.map((reserva, index) => (
+                  <tr key={`${reserva.name}-${reserva.bookTitle}-${index}`}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <div className="text-sm font-medium text-gray-900">
-                          {locatario.name}
+                          {reserva.name}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {locatario.email}
+                          {reserva.email}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {locatario.bookTitle}
+                      {reserva.bookTitle}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {Array.isArray(locatario.bookAuthor)
-                        ? locatario.bookAuthor.join(', ')
-                        : locatario.bookAuthor}
+                      {Array.isArray(reserva.bookAuthor)
+                        ? reserva.bookAuthor.join(', ')
+                        : reserva.bookAuthor}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {locatario.since}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {locatario.returnDate}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusMap[locatario.status]?.color ||
-                          'bg-gray-100 text-gray-800'
-                          }`}
-                      >
-                        {statusMap[locatario.status]?.label || locatario.status}
-                      </span>
+                      {reserva.since}
                     </td>
                   </tr>
                 ))}

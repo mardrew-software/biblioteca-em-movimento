@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { Menu, X } from 'lucide-react';
 
 interface User {
   email: string;
@@ -15,11 +16,17 @@ export function Navbar() {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     checkAuth();
   }, []);
+
+  // Close menu when pathname changes
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [pathname]);
 
   // Load Google Sign-In button when not logged in
   useEffect(() => {
@@ -99,74 +106,48 @@ export function Navbar() {
     }
   };
 
-  // Admin links (only visible when logged in)
-  const adminLinks = [
-    { href: '/locatarios', label: 'Locatários' },
-    { href: '/admin', label: 'Admin' },
-  ];
-
-  const navLinks = user ? adminLinks : [];
-
   return (
-    <nav className="bg-white shadow-sm border-b">
-      <div className="px-4 sm:px-6 lg:px-8 xl:px-16 mx-auto">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-8">
-            <Link href="/" >
-              <img src="/logo.png" alt="centro em movimento" className="h-8" />
-            </Link>
+    <nav className="bg-white shadow-sm border-b sticky top-0 z-[100] py-1">
+      <div className="px-8 grid grid-cols-2 lg:grid-cols-3 h-16 w-full items-center">
+        <Link href="/" className="flex-shrink-0">
+          <img src="/logo.png" alt="centro em movimento" className="h-8" />
+        </Link>
 
-            {navLinks.length > 0 && (
-              <div className="hidden md:flex items-center gap-4">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`text-sm font-medium transition-colors hover:text-[#ff4e00] ${pathname === link.href
-                      ? 'text-[#ff4e00]'
-                      : 'text-gray-600'
-                      }`}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
+        <div className="hidden lg:block text-2xl font-bold text-[#ff4e00] truncate px-4 text-center">
+          biblioteca em movimento
+        </div>
 
-          <div className="text-2xl font-bold text-[#ff4e00]">
-            biblioteca em movimento
-          </div>
-
-          <div className="flex items-center gap-4">
-            {!loading && (
-              <>
-                {user ? (
-                  <div className="flex items-center gap-3">
+        <div className="flex items-center justify-end gap-2 sm:gap-4">
+          {!loading && (
+            <>
+              {user ? (
+                <div className="flex items-center gap-6">
+                  <div className='flex flex-row gap-2 items-center'>
                     {user.picture && (
                       <img
                         src={user.picture}
                         alt={user.name}
-                        className="w-8 h-8 rounded-full"
+                        className="w-6 h-6 rounded-full"
                       />
                     )}
-                    <span className="text-sm text-gray-600 hidden md:block">
+                    <span className="text-sm text-gray-600 hidden sm:block">
                       {user.name}
                     </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleLogout}
-                    >
-                      Sair
-                    </Button>
                   </div>
-                ) : (
-                  <div ref={googleButtonRef} />
-                )}
-              </>
-            )}
-          </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleLogout}
+                    className="text-sm py-1 px-4"
+                  >
+                    Sair
+                  </Button>
+                </div>
+              ) : (
+                <div ref={googleButtonRef} />
+              )}
+            </>
+          )}
         </div>
       </div>
     </nav>

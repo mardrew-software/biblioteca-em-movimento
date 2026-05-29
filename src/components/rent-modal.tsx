@@ -12,7 +12,6 @@ interface RentModalProps {
     name: string;
     email: string;
     date: string;
-    returnDate: string;
   }) => void;
 }
 
@@ -21,13 +20,12 @@ export function RentModal({ book, onClose, onRent }: RentModalProps) {
     name: '',
     email: '',
     date: new Date().toISOString().split('T')[0],
-    returnDate: '',
   });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.returnDate) return;
+    if (!formData.name || !formData.email) return;
 
     setLoading(true);
     try {
@@ -48,12 +46,12 @@ export function RentModal({ book, onClose, onRent }: RentModalProps) {
         className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-6 border-b">
+        <div className="p-3 px-6 border-b">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Alugar Livro</h2>
+            <h2 className="text-xl font-semibold">Reservar livro</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-2xl"
+              className="cursor-pointer text-gray-400 hover:text-gray-600 text-2xl"
             >
               ×
             </button>
@@ -78,7 +76,7 @@ export function RentModal({ book, onClose, onRent }: RentModalProps) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Seu Nome *
+              Nome *
             </label>
             <Input
               type="text"
@@ -86,48 +84,19 @@ export function RentModal({ book, onClose, onRent }: RentModalProps) {
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
               }
-              placeholder="Digite seu nome completo"
               required
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Seu Email *
+              Email *
             </label>
             <Input
               type="email"
               value={formData.email}
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value })
-              }
-              placeholder="Digite seu email"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Data do Aluguel
-            </label>
-            <Input
-              type="date"
-              value={formData.date}
-              disabled
-              className="bg-gray-100"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Data de Devolução *
-            </label>
-            <Input
-              type="date"
-              value={formData.returnDate}
-              min={formData.date}
-              onChange={(e) =>
-                setFormData({ ...formData, returnDate: e.target.value })
               }
               required
             />
@@ -147,7 +116,7 @@ export function RentModal({ book, onClose, onRent }: RentModalProps) {
               className="flex-1 bg-[#ff4e00] hover:bg-[#e64500]"
               disabled={loading}
             >
-              {loading ? 'Processando...' : 'Confirmar Aluguel'}
+              {loading ? 'Processando...' : 'Confirmar'}
             </Button>
           </div>
         </form>

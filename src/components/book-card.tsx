@@ -2,26 +2,30 @@
 
 import { useState } from 'react';
 import { Book } from '@/lib/google-sheets';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Edit, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface BookCardProps {
   book: Book;
   onRent: (book: Book) => void;
+  isAdmin?: boolean;
+  onEdit?: (book: Book) => void;
+  onDelete?: (book: Book) => void;
 }
 
-export function BookCard({ book, onRent }: BookCardProps) {
+export function BookCard({ book, onRent, isAdmin, onEdit, onDelete }: BookCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const availableCopies = book.quantity - book.quantityRented;
   const canRent = availableCopies > 0;
 
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+    <div className="bg-white rounded-sm shadow-sm overflow-hidden">
       {/* Collapsible Header */}
       <div
-        className="p-6 cursor-pointer hover:bg-gray-50 transition-colors"
+        className="p-6 cursor-pointer hover:bg-gray-50 transition-colors h-full"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex flex-row items-start justify-between h-full">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3">
               <h3 className="text-lg font-semibold text-gray-900 truncate">
@@ -54,20 +58,51 @@ export function BookCard({ book, onRent }: BookCardProps) {
             )}
           </div>
 
-          <div className="flex items-center gap-4 ml-4">
-            <span
-              className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium whitespace-nowrap ${canRent
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
-                }`}
-            >
-              {canRent ? 'Disponível' : 'Indisponível'}
-            </span>
+          <div className='flex flex-col gap-8 h-full'>
+            <div className="flex items-center gap-4">
+              <span
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium whitespace-nowrap ${canRent
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-red-100 text-red-800'
+                  }`}
+              >
+                {canRent ? 'Disponível' : 'Indisponível'}
+              </span>
 
-            {isExpanded ? (
-              <ChevronUp className="w-5 h-5 text-gray-400" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-gray-400" />
+              {isExpanded ? (
+                <ChevronUp className="w-5 h-5 text-gray-400" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-gray-400" />
+              )}
+            </div>
+
+            {/* Admin Quick Actions */}
+            {isAdmin && (
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit?.(book);
+                  }}
+                  className="h-8 px-3 text-xs"
+                >
+                  <Edit className="w-3.5 h-3.5" />
+                  Editar
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete?.(book);
+                  }}
+                  className="h-8 px-3 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -156,7 +191,7 @@ export function BookCard({ book, onRent }: BookCardProps) {
                   <button
                     onClick={() => onRent(book)}
                     disabled={!canRent}
-                    className={`${!canRent ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#ff4e00]  cursor-pointer hover:bg-[#e64500] transition-colors'} text-white text-sm font-medium px-4 py-1 rounded-sm`}
+                    className={`${!canRent ? 'bg-gray-300 cursor-not-allowed' : 'cursor-pointer bg-[#ff4e00] hover:bg-[#e64500] transition-colors'} text-white text-sm font-medium px-4 py-1 rounded-sm`}
                   >
                     Reservar
                   </button>

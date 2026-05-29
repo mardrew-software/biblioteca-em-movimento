@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
-import { getLocatarios } from '@/lib/google-sheets';
+import { getReservas } from '@/lib/google-sheets';
 
 export async function GET() {
   try {
-    const locatarios = await getLocatarios();
-    return NextResponse.json({ locatarios });
+    const reservas = await getReservas();
+    return NextResponse.json({ reservas });
   } catch (error) {
-    console.error('Erro ao buscar locatários:', error);
+    console.error('Erro ao buscar Reservas:', error);
     return NextResponse.json(
-      { error: 'Erro ao buscar locatários' },
+      { error: 'Erro ao buscar Reservas' },
       { status: 500 }
     );
   }
