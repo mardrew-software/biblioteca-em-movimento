@@ -483,7 +483,7 @@ export default function HomePage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Data de Publicação
+                    Data
                   </label>
                   <Input
                     type="text"

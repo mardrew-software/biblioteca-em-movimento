@@ -46,7 +46,7 @@ export function RentModal({ book, onClose, onRent }: RentModalProps) {
         className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-3 px-6 border-b">
+        <div className="py-2 px-4 border-b">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">reservar livro</h2>
             <button
