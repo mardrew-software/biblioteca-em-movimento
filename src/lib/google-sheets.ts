@@ -3,6 +3,7 @@ import { GoogleAuth } from 'google-auth-library';
 
 let auth: GoogleAuth | null = null;
 let sheets: ReturnType<typeof google.sheets> | null = null;
+let drive: ReturnType<typeof google.drive> | null = null;
 
 export function getSpreadsheetId(): string {
     const id = process.env.SPREADSHEET_ID || '';
@@ -12,6 +13,11 @@ export function getSpreadsheetId(): string {
 export function getSheetName(): string {
     return process.env.SHEET_NAME || 'Livros';
 }
+
+const SCOPES = [
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/drive.readonly',
+];
 
 function initializeGoogleAuth() {
     if (sheets) return sheets;
@@ -29,7 +35,7 @@ function initializeGoogleAuth() {
             const parsedCredentials = JSON.parse(credentials);
             auth = new GoogleAuth({
                 credentials: parsedCredentials,
-                scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+                scopes: SCOPES,
             });
         } else if (keyFile) {
             // Use key file - check if file exists
@@ -44,7 +50,7 @@ function initializeGoogleAuth() {
 
             auth = new GoogleAuth({
                 keyFile,
-                scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+                scopes: SCOPES,
             });
         }
 
@@ -54,6 +60,7 @@ function initializeGoogleAuth() {
         }
 
         sheets = google.sheets({ version: 'v4', auth });
+        drive = google.drive({ version: 'v3', auth });
         return sheets;
     } catch (error) {
         console.error('[Google Auth] ERROR: Failed to initialize Google Auth:', error);
@@ -78,6 +85,33 @@ function getSheets() {
         throw new Error('Google Sheets client not initialized. Check your service account configuration.');
     }
     return sheets;
+}
+
+function getDriveClient() {
+    if (!drive) {
+        initializeGoogleAuth();
+    }
+    if (!drive) {
+        throw new Error('Google Drive client not initialized. Check your service account configuration.');
+    }
+    return drive;
+}
+
+export async function verifyGoogleSheetAccess(email: string): Promise<boolean> {
+    try {
+        const driveClient = getDriveClient();
+        const response = await driveClient.permissions.list({
+            fileId: SPREADSHEET_ID,
+            fields: 'permissions(emailAddress)',
+        });
+        const emails = response.data.permissions
+            ?.map((p) => p.emailAddress?.toLowerCase())
+            .filter(Boolean) || [];
+        return emails.includes(email.toLowerCase());
+    } catch (err) {
+        console.error('[Google Auth] Error verifying sheet access:', err);
+        return false;
+    }
 }
 
 export const bookColsNumber = {

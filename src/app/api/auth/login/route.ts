@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { OAuth2Client } from 'google-auth-library';
 import { createToken, setAuthCookie } from '@/lib/auth';
+import { verifyGoogleSheetAccess } from '@/lib/google-sheets';
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 
@@ -36,6 +37,15 @@ export async function POST(request: NextRequest) {
       name: payload.name || '',
       picture: payload.picture,
     };
+
+    // Verificar se o usuário tem acesso à planilha
+    const hasAccess = await verifyGoogleSheetAccess(user.email);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { error: 'Isto é só para gestores!' },
+        { status: 403 }
+      );
+    }
 
     // Criar token JWT
     const authToken = await createToken(user);

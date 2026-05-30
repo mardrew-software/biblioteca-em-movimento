@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { ToastContainer, useToast } from '@/components/ui/toast';
 
 interface User {
   email: string;
@@ -12,10 +12,10 @@ interface User {
 }
 
 export function Navbar() {
-  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const googleButtonRef = useRef<HTMLDivElement>(null);
+  const { toasts, removeToast, error: showError } = useToast();
 
   useEffect(() => {
     checkAuth();
@@ -81,11 +81,17 @@ export function Navbar() {
         await checkAuth();
         window.location.href = '/';
       } else {
-        throw new Error('Falha na autenticação');
+        const data = await res.json();
+        if (res.status === 403) {
+          showError(data.error || 'Não tem permissão para entrar nesta aplicação');
+        } else {
+          showError(data.error || 'Falha na autenticação');
+          return;
+        }
       }
-    } catch (error) {
-      console.error('Erro no login:', error);
-      alert('Erro ao fazer login. Tente novamente.');
+    } catch (err) {
+      console.error('Erro no login:', err);
+      showError('Erro ao fazer login. Tente novamente.');
     }
   };
 
@@ -143,6 +149,7 @@ export function Navbar() {
           )}
         </div>
       </div>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </nav>
   );
 }
