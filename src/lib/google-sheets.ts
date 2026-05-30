@@ -247,7 +247,7 @@ export function getBookRangeToUpdate(rowId: number): string {
 }
 
 export function getTotalRange(rowId: number): string {
-    return `${getCellToUpdate(rowId, bookColsAlphabet.isbn)}:${getCellToUpdate(rowId, bookColsAlphabet.notes)}`;
+    return `${getCellToUpdate(rowId, bookColsAlphabet.id)}:${getCellToUpdate(rowId, bookColsAlphabet.notes)}`;
 }
 
 function joinByComma(base: string, toAdd: string): string {
@@ -296,7 +296,7 @@ export function removeFromRentalRange(values: string[], valueToRemove: { name: s
 
 export function mapBookToRange(book: Partial<Book>): string[] {
     return [
-        `${book.id || ''}`,                           // 0: id
+        `${book.id || ''}`,                            // 0: id
         `${book.isbn || ''}`,                          // 1: isbn
         `${book.author || ''}`,                        // 2: author
         `${book.title || ''}`,                         // 3: title
