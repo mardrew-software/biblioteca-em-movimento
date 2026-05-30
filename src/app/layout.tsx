@@ -14,8 +14,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "biblioteca em movimento",
+  title: "c.e.m - biblioteca em movimento",
   description: "biblioteca do centro em movimento",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
