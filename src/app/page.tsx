@@ -281,7 +281,7 @@ export default function HomePage() {
       {isAdmin && (
         <div className="gap-4 flex flex-col lg:flex-row items-center justify-between bg-orange-50 p-4 rounded-lg border border-orange-100">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">... é preciso vir cá eu gerir, para ficar gerido...</h3>
+            <h3 className="text-lg font-semibold text-gray-900">... isto aqui é só gestores ...</h3>
           </div>
           <div className='flex flex-row flex-wrap gap-4'>
             <Link href="/reservas" className="flex flex-row gap-2 bg-[#ff4e00] hover:bg-[#e64500] bg-[#ff4e00] text-white shadow px-4 py-2 text-sm rounded-sm items-center">
