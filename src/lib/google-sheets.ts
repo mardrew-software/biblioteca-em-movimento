@@ -19,13 +19,6 @@ function initializeGoogleAuth() {
     const keyFile = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_FILE;
     const credentials = process.env.GOOGLE_SERVICE_ACCOUNT_CREDENTIALS;
 
-    console.log('[Google Auth] ==========================================');
-    console.log('[Google Auth] Initializing...');
-    console.log('[Google Auth] SPREADSHEET_ID:', SPREADSHEET_ID);
-    console.log('[Google Auth] SHEET_NAME:', SHEET_NAME);
-    console.log('[Google Auth] keyFile env var:', keyFile ? keyFile : 'NOT SET');
-    console.log('[Google Auth] credentials env var:', credentials ? 'SET (length: ' + credentials.length + ')' : 'NOT SET');
-
     if (!keyFile && !credentials) {
         console.error('[Google Auth] ERROR: GOOGLE_SERVICE_ACCOUNT_KEY_FILE or GOOGLE_SERVICE_ACCOUNT_CREDENTIALS environment variable is required');
         return null;
@@ -33,28 +26,20 @@ function initializeGoogleAuth() {
 
     try {
         if (credentials) {
-            // Parse credentials from environment variable
-            console.log('[Google Auth] Using credentials from environment variable');
             const parsedCredentials = JSON.parse(credentials);
-            console.log('[Google Auth] client_email:', parsedCredentials.client_email);
-            console.log('[Google Auth] project_id:', parsedCredentials.project_id);
             auth = new GoogleAuth({
                 credentials: parsedCredentials,
                 scopes: ['https://www.googleapis.com/auth/spreadsheets'],
             });
         } else if (keyFile) {
             // Use key file - check if file exists
-            console.log('[Google Auth] Using key file:', keyFile);
             const fs = require('fs');
             const path = require('path');
             const fullPath = path.resolve(keyFile);
-            console.log('[Google Auth] Full path:', fullPath);
-            console.log('[Google Auth] File exists:', fs.existsSync(fullPath));
 
             if (fs.existsSync(fullPath)) {
                 const fileContent = fs.readFileSync(fullPath, 'utf8');
                 const creds = JSON.parse(fileContent);
-                console.log('[Google Auth] client_email from file:', creds.client_email);
             }
 
             auth = new GoogleAuth({
@@ -69,8 +54,6 @@ function initializeGoogleAuth() {
         }
 
         sheets = google.sheets({ version: 'v4', auth });
-        console.log('[Google Auth] Successfully initialized Google Sheets client');
-        console.log('[Google Auth] ==========================================');
         return sheets;
     } catch (error) {
         console.error('[Google Auth] ERROR: Failed to initialize Google Auth:', error);
@@ -313,18 +296,18 @@ export function removeFromRentalRange(values: string[], valueToRemove: { name: s
 
 export function mapBookToRange(book: Partial<Book>): string[] {
     return [
-        `${book.id || ''}`,
-        `${book.isbn || ''}`,
-        `${book.collection || ''}`,
-        `${book.city || ''}`,
-        `${book.author || ''}`,
-        `${book.title || ''}`,
-        `${book.subtitle || ''}`,
-        `${book.publicationDate || ''}`,
-        `${book.description || ''}`,
-        Array.isArray(book.genres) ? book.genres.join(', ') : (book.genres || ''),
-        `${book.publisher || ''}`,
-        `${book.quantity || 0}`,
+        `${book.id || ''}`,                           // 0: id
+        `${book.isbn || ''}`,                          // 1: isbn
+        `${book.author || ''}`,                        // 2: author
+        `${book.title || ''}`,                         // 3: title
+        `${book.subtitle || ''}`,                      // 4: subtitle
+        `${book.publicationDate || ''}`,               // 5: publication_date
+        `${book.description || ''}`,                   // 6: description
+        Array.isArray(book.genres) ? book.genres.join(', ') : (book.genres || ''), // 7: genres
+        `${book.publisher || ''}`,                     // 8: publisher
+        `${book.collection || ''}`,                    // 9: collection
+        `${book.city || ''}`,                          // 10: city
+        `${book.quantity || 0}`,                       // 11: quantity
     ];
 }
 
