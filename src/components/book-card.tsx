@@ -190,7 +190,7 @@ export function BookCard({ book, onRent, isAdmin, onEdit, onDelete }: BookCardPr
                 <div className='flex flex-row gap-4 bg-white py-2 px-4'>
                   <div className="flex items-center flex-row gap-1">
                     <span className="text-sm text-gray-500">Disponíveis</span>
-                    <p className="text-sm text-gray-700">{canRent ? `${book.availableCopies} de ${book.quantity}` : `N/A`}</p>
+                    <p className="text-sm text-gray-700">{canRent ? `${availableCopies} de ${book.quantity}` : `N/A`}</p>
                   </div>
 
                   <button
